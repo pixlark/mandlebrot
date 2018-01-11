@@ -17,8 +17,8 @@ typedef char bool;
 #define CENTER_X -0.743643
 #define CENTER_Y  0.131825
 
-#define SDL_MAIN_HANDLED
-#include <SDL2/SDL.h>
+//#define SDL_MAIN_HANDLED
+//#include <SDL2/SDL.h>
 
 static unsigned char pixels[WIDTH*HEIGHT][4];
 
