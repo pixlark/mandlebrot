@@ -1,5 +1,5 @@
 bin
 bin/*
-test.mp4
+*.mp4
 img
 img/*

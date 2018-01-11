@@ -4,6 +4,9 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
+
 typedef char bool;
 #define false 0x00
 #define true  0xFF
@@ -11,14 +14,24 @@ typedef char bool;
 #define WIDTH  1920
 #define HEIGHT 1080
 
-/*
+#define THREADED 1
+
+#if 0
 #define CENTER_X -0.1011
-#define CENTER_Y  0.9563*/
+#define CENTER_Y  0.9563
+
 #define CENTER_X -0.743643
 #define CENTER_Y  0.131825
 
-#define SDL_MAIN_HANDLED
-#include <SDL2/SDL.h>
+#define CENTER_X  0.360240443437614 // 15 digits of precision
+#define CENTER_Y -0.641313061064803
+
+#define CENTER_X -1.749998410993740 // Not enough detail to do this one...?
+#define CENTER_Y -0.000000000000001
+#endif
+
+#define CENTER_X -0.701000092002025
+#define CENTER_Y  0.351000000999792
 
 static unsigned char pixels[WIDTH*HEIGHT][4];
 
@@ -48,15 +61,16 @@ void square_complex(double z[2])
 }
 
 #define MAX_ITERATIONS 256
+#define ITER_MULT 1 // This doesn't seem to work...?
 int diverges(double x, double y)
 {
 	double z[2] = {0, 0};
-	for (int i = 0; i < MAX_ITERATIONS; i++) {
+	for (int i = 0; i < MAX_ITERATIONS * ITER_MULT; i++) {
 		square_complex(z);
 		z[0] += x;
 		z[1] += y;
 		if (z[0] * z[0] + z[1] * z[1] > 4) {
-			return i;
+			return (i / ITER_MULT);
 		}
 	}
 	return -1;
@@ -85,11 +99,13 @@ int main(int argc, char ** argv)
 		return 0;
 	}
 
-	SDL_Window * window;
+	SDL_Init(0);
+	SDL_Window  * window;
 	SDL_Surface * wsurf;
 	SDL_Surface * psurf = NULL;
 	
 	if (mode == LIVE) {
+		SDL_Quit();
 		SDL_Init(SDL_INIT_VIDEO);
 		window = SDL_CreateWindow(
 			"Visualizer",
@@ -98,11 +114,15 @@ int main(int argc, char ** argv)
 		wsurf = SDL_GetWindowSurface(window);
 	}
 
-	double zoom = 0.1;
-	double zoom_max = 0.00000000298;
-	double change = 0.95;
+	double zoom     = 0.1;
+	double zoom_max = 0.000000000000001;
+	double change   = 0.95;
 
 	int img_counter = 0;
+
+	int num_cores = omp_get_num_procs();
+
+	unsigned long int start_ticks = SDL_GetTicks();
 	
 	SDL_Event event;
 	bool running = true;
@@ -114,8 +134,22 @@ int main(int argc, char ** argv)
 				break;
 			}
 		}
-		if (zoom <= zoom_max) running = false;
+		//printf("%.15f\n", zoom);
+		//if (zoom <= zoom_max) running = false;
+		if (img_counter >= 300) running = false;
+		
+		/*
+		int ymin = 0;
+		int ymax = (i + 1) * (HEIGHT / num_cores);
+		ymin -= HEIGHT / 2;
+		ymax -= HEIGHT / 2;
+		
+		int xmin = -WIDTH  / 2;
+		int xmax =  WIDTH  / 2;*/
 
+		#if THREADED
+		#pragma omp parallel for
+		#endif
 		for (int y = -HEIGHT/2; y < HEIGHT/2; y++) {
 			for (int x = -WIDTH/2; x < WIDTH/2; x++) {
 				double dx = (double) (x * zoom) + CENTER_X;
@@ -142,7 +176,8 @@ int main(int argc, char ** argv)
 			char name[64];
 			sprintf(name, "img/m%04d.png", img_counter);
 		
-			stbi_write_png(name, WIDTH, HEIGHT, 4, pixels, 4*WIDTH);
+			//stbi_write_png(name, WIDTH, HEIGHT, 4, pixels, 4*WIDTH);
+			stbi_write_bmp(name, WIDTH, HEIGHT, 4, pixels);
 			printf("%s rendered\n", name);
 
 			img_counter++;
@@ -158,6 +193,12 @@ int main(int argc, char ** argv)
 			SDL_BlitSurface(psurf, NULL, wsurf, NULL);
 			SDL_UpdateWindowSurface(window);
 		}
+	}
+
+	if (mode == RENDER) {
+		printf("Took %lu ticks while %s\n",
+			SDL_GetTicks() - start_ticks,
+			THREADED ? "threaded" : "unthreaded");
 	}
 	
 	return 0;
