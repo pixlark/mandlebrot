@@ -1,4 +1,5 @@
-a.out
+bin
+bin/*
 test.mp4
 img
 img/*

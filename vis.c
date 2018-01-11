@@ -8,8 +8,8 @@ typedef char bool;
 #define false 0x00
 #define true  0xFF
 
-#define WIDTH  800
-#define HEIGHT 600
+#define WIDTH  1920
+#define HEIGHT 1080
 
 /*
 #define CENTER_X -0.1011
@@ -17,8 +17,8 @@ typedef char bool;
 #define CENTER_X -0.743643
 #define CENTER_Y  0.131825
 
-//#define SDL_MAIN_HANDLED
-//#include <SDL2/SDL.h>
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
 
 static unsigned char pixels[WIDTH*HEIGHT][4];
 
@@ -62,16 +62,41 @@ int diverges(double x, double y)
 	return -1;
 }
 
-int main()
-{
-	/*SDL_Init(SDL_INIT_VIDEO);
-	SDL_Window * window = SDL_CreateWindow(
-		"Visualizer",
-		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-	SDL_Surface * wsurf = SDL_GetWindowSurface(window);*/
+enum Mode {
+	LIVE,
+	RENDER,
+};
 
+int main(int argc, char ** argv)
+{
+	if (argc < 2) {
+		printf("Please choose 'live' or 'render'\n");
+		return 0;
+	}
+	
+	enum Mode mode;
+	
+	if (strcmp(argv[1], "live") == 0) {
+		mode = LIVE;
+	} else if (strcmp(argv[1], "render") == 0) {
+		mode = RENDER;
+	} else {
+		printf("Please choose 'live' or 'render'\n");
+		return 0;
+	}
+
+	SDL_Window * window;
+	SDL_Surface * wsurf;
 	SDL_Surface * psurf = NULL;
+	
+	if (mode == LIVE) {
+		SDL_Init(SDL_INIT_VIDEO);
+		window = SDL_CreateWindow(
+			"Visualizer",
+			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+		wsurf = SDL_GetWindowSurface(window);
+	}
 
 	double zoom = 0.1;
 	double zoom_max = 0.00000000298;
@@ -79,19 +104,16 @@ int main()
 
 	int img_counter = 0;
 	
-	//SDL_Event event;
+	SDL_Event event;
 	bool running = true;
 	while (running) {
-		/*
-		while (SDL_PollEvent(&event) != 0) {
+		while (mode == LIVE && SDL_PollEvent(&event) != 0) {
 			switch (event.type) {
 			case SDL_QUIT:
 				running = false;
 				break;
 			}
-		}*/
-
-		//printf("%.15f\n", zoom);
+		}
 		if (zoom <= zoom_max) running = false;
 
 		for (int y = -HEIGHT/2; y < HEIGHT/2; y++) {
@@ -106,9 +128,9 @@ int main()
 					color[1] = 0x00;
 					color[2] = 0x00;
 				} else {
-					color[0] = iter;
-					color[1] = iter;
-					color[2] = iter;
+					color[0] = 256 - iter;
+					color[1] = 256 - iter;
+					color[2] = 256 - iter;
 				}
 				set_pixel(x, y, color);
 			}
@@ -116,24 +138,26 @@ int main()
 
 		zoom *= change;
 
-		char name[64];
-		sprintf(name, "img/m%04d.png", img_counter);
+		if (mode == RENDER) {
+			char name[64];
+			sprintf(name, "img/m%04d.png", img_counter);
 		
-		stbi_write_png(name, WIDTH, HEIGHT, 4, pixels, 4*WIDTH);
-		printf("%s rendered\n", name);
+			stbi_write_png(name, WIDTH, HEIGHT, 4, pixels, 4*WIDTH);
+			printf("%s rendered\n", name);
 
-		img_counter++;
+			img_counter++;
+		} else if (mode == LIVE) {		
+			SDL_FreeSurface(psurf);
+			SDL_Surface * psurf = SDL_CreateRGBSurfaceFrom(
+				pixels, WIDTH, HEIGHT, 32, 4*WIDTH,
+				0x000000FF,
+				0x0000FF00,
+				0x00FF0000,
+				0xFF000000);
 		
-		/*SDL_FreeSurface(psurf);
-		SDL_Surface * psurf = SDL_CreateRGBSurfaceFrom(
-			pixels, WIDTH, HEIGHT, 32, 4*WIDTH,
-			0x000000FF,
-			0x0000FF00,
-			0x00FF0000,
-			0xFF000000);
-		
-		SDL_BlitSurface(psurf, NULL, wsurf, NULL);
-		SDL_UpdateWindowSurface(window);*/
+			SDL_BlitSurface(psurf, NULL, wsurf, NULL);
+			SDL_UpdateWindowSurface(window);
+		}
 	}
 	
 	return 0;
