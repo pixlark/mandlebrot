@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 typedef char bool;
 #define false 0x00
 #define true  0xFF
@@ -8,8 +11,11 @@ typedef char bool;
 #define WIDTH  800
 #define HEIGHT 600
 
+/*
 #define CENTER_X -0.1011
-#define CENTER_Y  0.9563
+#define CENTER_Y  0.9563*/
+#define CENTER_X -0.743643
+#define CENTER_Y  0.131825
 
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
@@ -58,28 +64,35 @@ int diverges(double x, double y)
 
 int main()
 {
-	SDL_Init(SDL_INIT_VIDEO);
+	/*SDL_Init(SDL_INIT_VIDEO);
 	SDL_Window * window = SDL_CreateWindow(
 		"Visualizer",
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-	SDL_Surface * wsurf = SDL_GetWindowSurface(window);
+	SDL_Surface * wsurf = SDL_GetWindowSurface(window);*/
 
 	SDL_Surface * psurf = NULL;
 
 	double zoom = 0.1;
-	double change = 0.75;
+	double zoom_max = 0.00000000298;
+	double change = 0.95;
+
+	int img_counter = 0;
 	
-	SDL_Event event;
+	//SDL_Event event;
 	bool running = true;
 	while (running) {
+		/*
 		while (SDL_PollEvent(&event) != 0) {
 			switch (event.type) {
 			case SDL_QUIT:
 				running = false;
 				break;
 			}
-		}
+		}*/
+
+		//printf("%.15f\n", zoom);
+		if (zoom <= zoom_max) running = false;
 
 		for (int y = -HEIGHT/2; y < HEIGHT/2; y++) {
 			for (int x = -WIDTH/2; x < WIDTH/2; x++) {
@@ -102,8 +115,16 @@ int main()
 		}
 
 		zoom *= change;
+
+		char name[64];
+		sprintf(name, "img/m%04d.png", img_counter);
 		
-		SDL_FreeSurface(psurf);
+		stbi_write_png(name, WIDTH, HEIGHT, 4, pixels, 4*WIDTH);
+		printf("%s rendered\n", name);
+
+		img_counter++;
+		
+		/*SDL_FreeSurface(psurf);
 		SDL_Surface * psurf = SDL_CreateRGBSurfaceFrom(
 			pixels, WIDTH, HEIGHT, 32, 4*WIDTH,
 			0x000000FF,
@@ -112,7 +133,7 @@ int main()
 			0xFF000000);
 		
 		SDL_BlitSurface(psurf, NULL, wsurf, NULL);
-		SDL_UpdateWindowSurface(window);
+		SDL_UpdateWindowSurface(window);*/
 	}
 	
 	return 0;
