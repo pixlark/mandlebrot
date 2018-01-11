@@ -11,10 +11,8 @@ typedef char bool;
 #define false 0x00
 #define true  0xFF
 
-#define WIDTH  1920
-#define HEIGHT 1080
-
-#define THREADED 1
+#define WIDTH  800
+#define HEIGHT 600
 
 #if 0
 #define CENTER_X -0.1011
@@ -81,6 +79,11 @@ enum Mode {
 	RENDER,
 };
 
+void render_frame(int zoom)
+{
+
+}
+
 int main(int argc, char ** argv)
 {
 	if (argc < 2) {
@@ -121,6 +124,7 @@ int main(int argc, char ** argv)
 	int img_counter = 0;
 
 	int num_cores = omp_get_num_procs();
+	printf("%d available cores\n", num_cores);
 
 	unsigned long int start_ticks = SDL_GetTicks();
 	
@@ -134,22 +138,12 @@ int main(int argc, char ** argv)
 				break;
 			}
 		}
+		
 		//printf("%.15f\n", zoom);
 		//if (zoom <= zoom_max) running = false;
-		if (img_counter >= 300) running = false;
-		
-		/*
-		int ymin = 0;
-		int ymax = (i + 1) * (HEIGHT / num_cores);
-		ymin -= HEIGHT / 2;
-		ymax -= HEIGHT / 2;
-		
-		int xmin = -WIDTH  / 2;
-		int xmax =  WIDTH  / 2;*/
+		if (img_counter >= 350) running = false;
 
-		#if THREADED
 		#pragma omp parallel for
-		#endif
 		for (int y = -HEIGHT/2; y < HEIGHT/2; y++) {
 			for (int x = -WIDTH/2; x < WIDTH/2; x++) {
 				double dx = (double) (x * zoom) + CENTER_X;
@@ -196,9 +190,7 @@ int main(int argc, char ** argv)
 	}
 
 	if (mode == RENDER) {
-		printf("Took %lu ticks while %s\n",
-			SDL_GetTicks() - start_ticks,
-			THREADED ? "threaded" : "unthreaded");
+		printf("Took %lu ticks\n", SDL_GetTicks() - start_ticks);
 	}
 	
 	return 0;
