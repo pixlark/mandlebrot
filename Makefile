@@ -1,7 +1,7 @@
 # Independent
 src=src/render.c
 other_opts=-lgomp -fopenmp -O2 -w -o bin/mandible
-dyn_libs=-lm
+dyn_libs=
 
 # Windows
 win_incl_dirs=-I"G:/.libraries/stb" -I"G:\.minlib\SDL2-2.0.7\i686-w64-mingw32\include"

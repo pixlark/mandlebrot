@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
 #include <getopt.h>
 
@@ -33,8 +32,6 @@ typedef struct {
 	int width;
 	int height;
 } Pixels;
-
-//static unsigned char pixels[WIDTH*HEIGHT][BYTE_DEPTH];
 
 void set_pixel(Pixels pixels, int x, int y, unsigned char color[BYTE_DEPTH])
 {
@@ -78,7 +75,11 @@ int mandlebrot_diverges(double x, double y)
 
 void print_usage()
 {
-	printf("Usage: mandible -p xpos,ypos [options] file\n");
+	printf("Usage: mandible [options] file\n");
+	printf("  %-20sSpecify coordinates to zoom in on. (Default: 0 + 0i)\n", "-p ypos,xpos");
+	printf("  %-20sSpecify output resolution. (Default: 800x600)\n", "-r width,height");
+	printf("  %-20sSpecify zoom multiplier for each frame. (Default: 2.0)\n", "-z mult");
+	printf("  %-20sSpecify number of frames to render. (Default: indefinite)\n", "-f count");
 }
 
 int main(int argc, char ** argv)
@@ -96,7 +97,7 @@ int main(int argc, char ** argv)
 		char opt;
 		bool passed_pos = false;
 		
-		while ((opt = getopt(argc, argv, "p:r:z:f:")) != -1) {
+		while ((opt = getopt(argc, argv, "p:r:z:f:h")) != -1) {
 			switch (opt) {
 			case 'p':
 				if (sscanf(optarg, "%lf,%lf", &pos_x, &pos_y) != 2) {
@@ -122,6 +123,12 @@ int main(int argc, char ** argv)
 					return 1;
 				}
 				break;
+			case 'h':
+				printf("The 'Mandible' Mandlebrot Renderer\n");
+				printf("Written by pixlark\n");
+				printf("https://pixlark.github.io/\n");
+				print_usage();
+				return 0;
 			default:
 				print_usage();
 				return 1;
