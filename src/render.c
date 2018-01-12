@@ -4,8 +4,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#include "alg.h"
-
 typedef char bool;
 #define false 0x00
 #define true  0xFF
@@ -46,6 +44,31 @@ void set_pixel(int x, int y, unsigned char color[4])
 unsigned char * get_pixel(int x, int y)
 {
 	return pixels[x + y*WIDTH];
+}
+
+void square_complex(double z[2])
+{
+	double nz[2];
+	nz[0] = z[0] * z[0] + -1 * z[1] * z[1];
+	nz[1] = 2 * z[0] * z[1];
+	z[0] = nz[0];
+	z[1] = nz[1];
+}
+
+#define MAX_ITERATIONS 256
+#define ITER_MULT 1 // This doesn't seem to work...?
+int mandlebrot_diverges(double x, double y)
+{
+	double z[2] = {0, 0};
+	for (int i = 0; i < MAX_ITERATIONS * ITER_MULT; i++) {
+		square_complex(z);
+		z[0] += x;
+		z[1] += y;
+		if (z[0] * z[0] + z[1] * z[1] > 4) {
+			return (i / ITER_MULT);
+		}
+	}
+	return -1;
 }
 
 int main(int argc, char ** argv)
