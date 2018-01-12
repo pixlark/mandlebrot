@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
+#include <getopt.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
@@ -8,42 +11,44 @@ typedef char bool;
 #define false 0x00
 #define true  0xFF
 
-#define WIDTH  1920
-#define HEIGHT 1080
+#define BYTE_DEPTH 3
 
-#if 0
-#define CENTER_X -0.1011
-#define CENTER_Y  0.9563
+/*
+ * Test coordinates
+ *
+ * -0.1011,0.9563
+ *
+ * -0.743643,0.131825
+ *
+ * 0.360240443437614,-0.641313061064803
+ *
+ * Not enough detail to do this one...?
+ * -1.749998410993740,-0.000000000000001
+ *
+ * -0.701000092002025,0.351000000999792
+*/
 
-#define CENTER_X -0.743643
-#define CENTER_Y  0.131825
+typedef struct {
+	unsigned char * pixels;
+	int width;
+	int height;
+} Pixels;
 
-#define CENTER_X  0.360240443437614 // 15 digits of precision
-#define CENTER_Y -0.641313061064803
+//static unsigned char pixels[WIDTH*HEIGHT][BYTE_DEPTH];
 
-#define CENTER_X -1.749998410993740 // Not enough detail to do this one...?
-#define CENTER_Y -0.000000000000001
-#endif
-
-#define CENTER_X -0.701000092002025
-#define CENTER_Y  0.351000000999792
-
-static unsigned char pixels[WIDTH*HEIGHT][4];
-
-void set_pixel(int x, int y, unsigned char color[4])
+void set_pixel(Pixels pixels, int x, int y, unsigned char color[BYTE_DEPTH])
 {
-	x += (WIDTH  / 2) - CENTER_X;
-	y += (HEIGHT / 2) - CENTER_Y;
-	if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
-	for (int i = 0; i < 4; i++) {
-		pixels[x + y*WIDTH][i] = color[i];
+	if (x < 0 || x >= pixels.width || y < 0 || y >= pixels.height) return;
+	for (int i = 0; i < BYTE_DEPTH; i++) {
+		*(pixels.pixels + (x + y * pixels.width) * BYTE_DEPTH + i) = color[i];
 	}
 }
 
-// TODO(pixlark): Return copy, not reference
-unsigned char * get_pixel(int x, int y)
+void clear_pixels(Pixels pixels)
 {
-	return pixels[x + y*WIDTH];
+	for (int i = 0; i < pixels.width * pixels.height * BYTE_DEPTH; i++) {
+		pixels.pixels[i] = 0;
+	}
 }
 
 void square_complex(double z[2])
@@ -71,31 +76,86 @@ int mandlebrot_diverges(double x, double y)
 	return -1;
 }
 
+void print_usage()
+{
+	printf("Usage: mandible -p xpos,ypos [options] file\n");
+}
+
 int main(int argc, char ** argv)
 {
+	Pixels pixels;
+	pixels.width = 800;
+	pixels.height = 600;
+	
+	double pos_x = 0.0;
+	double pos_y = 0.0;
+	double change_rec = 2.0;
+	int frame_max = -1;
+	{
+		// Parse command line args
+		char opt;
+		bool passed_pos = false;
+		
+		while ((opt = getopt(argc, argv, "p:r:z:f:")) != -1) {
+			switch (opt) {
+			case 'p':
+				if (sscanf(optarg, "%lf,%lf", &pos_x, &pos_y) != 2) {
+					print_usage();
+					return 1;
+				}
+				break;
+			case 'r':
+				if (sscanf(optarg, "%d,%d", &pixels.width, &pixels.height) != 2) {
+					print_usage();
+					return 1;
+				}
+				break;
+			case 'z':
+				if (sscanf(optarg, "%lf", &change_rec) != 1) {
+					print_usage();
+					return 1;
+				}
+				break;
+			case 'f':
+				if (sscanf(optarg, "%d", &frame_max) != 1) {
+					print_usage();
+					return 1;
+				}
+				break;
+			default:
+				print_usage();
+				return 1;
+				break;
+			}
+		}
+	}
+
+	pixels.pixels = (unsigned char *)
+		malloc(sizeof(unsigned char) * pixels.width * pixels.height * BYTE_DEPTH);
+	
 	double zoom     = 0.1;
-	double zoom_max = 0.000000000000001;
-	double change   = 0.95;
+	double change   = 1.0 / change_rec;
 
 	int img_counter = 0;
 
 	int num_cores = omp_get_num_procs();
 	printf("%d available cores\n", num_cores);
-
-	//unsigned long int start_ticks = SDL_GetTicks(); // Find non-SDL alternative
+	printf("Rendering zoom at pos %.3lf %.3lf with %.3lf magnification each frame\n",
+		pos_x, pos_y, 1 / change);
 	
 	bool running = true;
 	while (running) {
-		//printf("%.15f\n", zoom);
-		//if (zoom <= zoom_max) running = false;
-		if (img_counter >= 350) running = false;
 
+		clear_pixels(pixels);
+
+		if (frame_max != -1 && img_counter >= frame_max) running = false;
+		
 		#pragma omp parallel for
-		for (int y = -HEIGHT/2; y < HEIGHT/2; y++) {
-			for (int x = -WIDTH/2; x < WIDTH/2; x++) {
-				double dx = (double) (x * zoom) + CENTER_X;
-				double dy = (double) (y * zoom) + CENTER_Y;
-				unsigned char color[4];
+		for (int y = -pixels.height/2; y < pixels.height/2; y++) {
+			for (int x = -pixels.width/2; x < pixels.width/2; x++) {
+				double dx = (double) (x * zoom) + pos_x;
+				double dy = (double) (y * zoom) + pos_y;
+				unsigned char color[BYTE_DEPTH];
 				color[3] = 0xFF;
 				int iter = mandlebrot_diverges(dx, dy);
 				if (iter == -1) {
@@ -103,27 +163,25 @@ int main(int argc, char ** argv)
 					color[1] = 0x00;
 					color[2] = 0x00;
 				} else {
-					color[0] = 256 - iter;
-					color[1] = 256 - iter;
-					color[2] = 256 - iter;
+					color[0] = iter;
+					color[1] = iter;
+					color[2] = iter;
 				}
-				set_pixel(x, y, color);
+				set_pixel(pixels, x + (pixels.width  / 2), y + (pixels.height / 2), color);
 			}
 		}
 
 		zoom *= change;
 		
 		char name[64];
-		sprintf(name, "img/m%04d.png", img_counter);
+		sprintf(name, "img/m%04d.bmp", img_counter);
 		
-		stbi_write_bmp(name, WIDTH, HEIGHT, 4, pixels);
+		stbi_write_bmp(name, pixels.width, pixels.height, BYTE_DEPTH, pixels.pixels);
 		printf("%s rendered\n", name);
 
 		img_counter++;
 
 	}
-	
-	//printf("Took %lu ticks\n", SDL_GetTicks() - start_ticks);
 	
 	return 0;
 }

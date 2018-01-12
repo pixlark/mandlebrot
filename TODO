@@ -1,0 +1,8 @@
+Optimization
+------------
+
+Don't recalculate pixels unless we have to.
+
+If the x-axis is on-screen, we can literally just reflect over it and
+save a shitload of time.
+

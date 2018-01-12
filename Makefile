@@ -1,6 +1,7 @@
 # Independent
 src=src/render.c
 other_opts=-lgomp -fopenmp -O2 -w -o bin/mandible
+dyn_libs=-lm
 
 # Windows
 win_incl_dirs=-I"G:/.libraries/stb" -I"G:\.minlib\SDL2-2.0.7\i686-w64-mingw32\include"
@@ -11,8 +12,8 @@ nix_incl_dirs=
 nix_other_opts=
 
 # Filled options
-win_full=$(src) $(win_incl_dirs) $(win_other_opts) $(other_opts)
-nix_full=$(src) $(nix_incl_dirs) $(nix_other_opts) $(other_opts)
+win_full=$(src) $(win_incl_dirs) $(dyn_libs) $(win_other_opts) $(other_opts)
+nix_full=$(src) $(nix_incl_dirs) $(dyn_libs) $(nix_other_opts) $(other_opts)
 
 win:
 	gcc $(win_full)
